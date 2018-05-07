@@ -38,6 +38,9 @@ def env_next_step(env, model, replay_memory, state):
 
 
 def optimize_dqn(model, replay_memory):
+    if not replay_memory.can_sample:
+        return None
+    
     transitions = replay_memory.sample()
     batch = list(zip(*transitions))
     state_batch = torch.FloatTensor(np.asarray(batch[0])).to(device)
@@ -62,18 +65,15 @@ if __name__ == '__main__':
     state = env.reset()
     print(state)
     for t in count():
-        next_state, done = env_next_step(env, model, replay_memory, state)        
-        state = next_state
+        state, done = env_next_step(env, model, replay_memory, state)        
 
-        if replay_memory.can_sample:
-            loss = optimize_dqn(model, replay_memory)
+        loss = optimize_dqn(model, replay_memory)
             
         ep_rewards = env.get_episode_rewards()
-        if len(ep_rewards) > 0:
-            if t % params.LOG_INTERVAL == 0:
-                best_score = max(ep_rewards[-1], best_score)
-                print('last ep: {}, best ep: {}, Loss: {:5f},'.format(
-                    ep_rewards[-1], 
-                    best_score,
-                    loss[0].item()
-                ))
+        if len(ep_rewards) > 0 and t % params.LOG_INTERVAL == 0:
+            best_score = max(ep_rewards[-1], best_score)
+            print('last ep: {}, best ep: {}, Loss: {:5f},'.format(
+                ep_rewards[-1], 
+                best_score,
+                loss[0].item()
+            ))

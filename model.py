@@ -9,21 +9,21 @@ import hyper_params as params
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DQN(nn.Module):
-    def __init__(self, in_channel, action):
+    def __init__(self, in_channel, actions):
         super(DQN, self).__init__()
         self.net = nn.Sequential(
             nn.Linear(in_channel, 128),
             nn.ReLU(),
             nn.Linear(128, 512),
             nn.ReLU(),
-            nn.Linear(512, action)
+            nn.Linear(512, actions)
         ).to(device)
         self.target_net = nn.Sequential(
             nn.Linear(in_channel, 128),
             nn.ReLU(),
             nn.Linear(128, 512),
             nn.ReLU(),
-            nn.Linear(512, action)            
+            nn.Linear(512, actions)            
         ).to(device)
         self.optimizer = optim.Adam(self.net.parameters(), lr=params.LR)
         self.update = 0
