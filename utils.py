@@ -45,7 +45,7 @@ class ReplayMemory:
         if p >= self.frame_history:
             encoded = [self.state_memory[p - self.frame_history:p]]
         elif p > 0:
-            encoded = [self.state_memory[-(self.frame_history - p):]] + [self.state_memory[:p]] 
+            encoded = [np.concatenate((self.state_memory[-(self.frame_history - p):], self.state_memory[:p]))] 
         else:
             encoded = [self.state_memory[-self.frame_history:]]
         # print(encoded)

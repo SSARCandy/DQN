@@ -28,7 +28,7 @@ def env_next_step(env, model, replay_memory):
     r2 = (env.unwrapped.theta_threshold_radians - abs(theta)) / env.unwrapped.theta_threshold_radians - 0.5
     reward = r1 + r2
 
-    env.render()
+    # env.render()
 
     if done:
         next_state = env.reset()
