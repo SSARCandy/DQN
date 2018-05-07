@@ -11,13 +11,14 @@ from utils import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def env_next_step(env, model, replay_memory, state):
+def env_next_step(env, model, replay_memory):
     sample = random.random()
 
-    if sample < params.EPS:
+    if sample < params.EPS or not replay_memory.can_sample:
         action = env.action_space.sample()
     else:
-        state_tensor = torch.FloatTensor([state]).to(device)
+        state_ = replay_memory.encode_last_state()
+        state_tensor = torch.FloatTensor([state_]).to(device)
         action = model(state_tensor).max(1)[1].item()
 
     next_state, reward, done, _ = env.step(action)
@@ -34,19 +35,18 @@ def env_next_step(env, model, replay_memory, state):
     else:
         replay_memory.store((list(state), action, reward, list(next_state)))
     
-    return next_state, done
+    return next_state, reward, done
 
 
 def optimize_dqn(model, replay_memory):
     if not replay_memory.can_sample:
         return None
     
-    transitions = replay_memory.sample()
-    batch = list(zip(*transitions))
-    state_batch = torch.FloatTensor(np.asarray(batch[0])).to(device)
-    action_batch = torch.LongTensor(np.asarray(batch[1])).view(-1, 1).to(device)
-    reward_batch = torch.FloatTensor(np.asarray(batch[2])).view(-1, 1).to(device)
-    next_state_batch = torch.FloatTensor(np.asarray(batch[3])).to(device)
+    batch_s, batch_a, batch_r, batch_s_ = replay_memory.sample()
+    state_batch = torch.FloatTensor(batch_s).to(device)
+    action_batch = torch.LongTensor(batch_a).view(-1, 1).to(device)
+    reward_batch = torch.FloatTensor(batch_r).view(-1, 1).to(device)
+    next_state_batch = torch.FloatTensor(batch_s_).to(device)
 
     loss = model.learn((state_batch, action_batch, reward_batch, next_state_batch))
     return loss
@@ -55,25 +55,29 @@ def optimize_dqn(model, replay_memory):
 if __name__ == '__main__':
     best_score = 0
     
+    # env = gym.make('BreakoutNoFrameskip-v4')
     env = gym.make('CartPole-v0')
     env = wrappers.Monitor(env, 'expt_dir', force=True, video_callable=lambda episode_id: False)
 
     # env = env.unwrapped
-    model = DQN(env.observation_space.shape[0], env.action_space.n)
-    replay_memory = ReplayMemory(params.MEMORY_SIZE, params.BATCH_SIZE)
+    w, = env.observation_space.shape
+    in_channels = w*params.FRAME_HISTORY_LEN
+    model = DQN(in_channels, env.action_space.n)
+    replay_memory = ReplayMemory(params.MEMORY_SIZE, params.BATCH_SIZE, frame_history=params.FRAME_HISTORY_LEN)
 
     state = env.reset()
-    print(state)
+    # print(state)
     for t in count():
-        state, done = env_next_step(env, model, replay_memory, state)        
+        state, reward, done = env_next_step(env, model, replay_memory)        
 
         loss = optimize_dqn(model, replay_memory)
             
         ep_rewards = env.get_episode_rewards()
         if len(ep_rewards) > 0 and t % params.LOG_INTERVAL == 0:
             best_score = max(ep_rewards[-1], best_score)
-            print('last ep: {}, best ep: {}, Loss: {:5f},'.format(
-                ep_rewards[-1], 
+            print('ep: {}, best ep: {}, last ep: {}, Loss: {:5f},'.format(
+                len(ep_rewards),
                 best_score,
+                ep_rewards[-1], 
                 loss[0].item()
             ))
