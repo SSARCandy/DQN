@@ -41,7 +41,7 @@ class ReplayMemory:
         return (batch_s, batch_a, batch_r, batch_s_)
 
     def encode_last_state(self):
-        p = 0#self.pos - 1
+        p = self.pos - 1
         if p >= self.frame_history:
             encoded = [self.state_memory[p - self.frame_history:p]]
         elif p > 0:

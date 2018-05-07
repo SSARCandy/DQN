@@ -32,16 +32,20 @@ class DQN(nn.Module):
         return self.net(x)
 
     def learn(self, batches):
-        state_batch, action_batch, reward_batch, next_state_batch = batches
-        state_batch = state_batch.view(state_batch.size(0), -1)
-        next_state_batch = state_batch.view(next_state_batch.size(0), -1)
+        batch_s, batch_a, batch_r, batch_s_ = batches
+        batch_s = batch_s.view(batch_s.size(0), -1)
+        batch_s_ = batch_s_.view(batch_s_.size(0), -1)
 
-        q_value = self.net(state_batch).gather(1, action_batch.view(-1, 1))
+        q_value = self.net(batch_s).gather(1, batch_a.view(-1, 1))
         # print(q_value.shape)
         # q_value = q_value.gather(1, action_batch.view(-1, 1))
+        next_q_value = self.target_net(batch_s_).max(1)[0].detach().view(-1, 1)
+        expected_q_value = batch_r + (next_q_value * params.GAMMA)
+        # print(q_value)
+        # print(next_q_value)
+        # print(reward_batch)
+        # print(expected_q_value)
         # assert False
-        next_q_value = self.target_net(next_state_batch).max(1)[0].detach().view(-1, 1)
-        expected_q_value = reward_batch + (next_q_value * params.GAMMA)
 
         loss = F.mse_loss(q_value, expected_q_value)
         self.optimizer.zero_grad()
